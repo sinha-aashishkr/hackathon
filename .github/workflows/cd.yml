@@ -4,8 +4,11 @@ on:
   push:
     branches: [ "main" ]
 
-jobs:
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCR_HOSTNAME: gcr.io
 
+jobs:
   # --- CD STAGE: DEPLOY TO GKE ---
   deploy-to-gke:
     name: Deploy to GKE
@@ -27,30 +30,29 @@ jobs:
 
       - name: Update Image Tags and Deploy
         run: |
-          # 1. Update Order Service (Java)
-          sed -i "s/{{IMAGE_VERSION}}/${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ vars.version }}/g" order-service/k8s/deployment.yml
-          kubectl apply -f order-service/k8s/service.yml
-          kubectl apply -f order-service/k8s/ingress.yml
-          kubectl apply -f order-service/k8s/deployment.yml
+          # Define a helper list of your services
+          SERVICES=("order-service" "application-service" "patient-service")
 
-          # 2. Update Application Service (Node)
-          sed -i "s/{{IMAGE_VERSION}}/${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ vars.version }}/g" application-service/k8s/deployment.yml
-          kubectl apply -f application-service/k8s/service.yml
-          kubectl apply -f application-service/k8s/ingress.yml
-          kubectl apply -f application-service/k8s/deployment.yml
-
-          # 3. Update Patient Service (Node)
-          sed -i "s/{{IMAGE_VERSION}}/${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ vars.version }}/g" patient-service/k8s/deployment.yml
-          kubectl apply -f patient-service/k8s/service.yml
-          kubectl apply -f patient-service/k8s/ingress.yml
-          kubectl apply -f patient-service/k8s/deployment.yml
+          for SERVICE in "${SERVICES[@]}"; do
+            echo "Processing $SERVICE..."
+            
+            # Use | as delimiter to avoid path conflicts
+            FULL_IMAGE="${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/$SERVICE:${{ vars.version }}"
+            
+            sed -i "s|{{IMAGE_VERSION}}|$FULL_IMAGE|g" $SERVICE/k8s/deployment.yml
+            
+            # Apply resources
+            kubectl apply -f $SERVICE/k8s/deployment.yml
+            kubectl apply -f $SERVICE/k8s/service.yml
+            kubectl apply -f $SERVICE/k8s/ingress.yml
+          done
 
       - name: Validate Deployment Status
         run: |
           echo "Waiting for rollouts to finish..."
-          kubectl rollout status deployment/order-service-deploy --timeout=90s
-          kubectl rollout status deployment/application-service-deploy --timeout=90s
-          kubectl rollout status deployment/patient-service-deploy --timeout=90s
+          kubectl rollout status deployment/order-service --timeout=90s
+          kubectl rollout status deployment/application-service --timeout=90s
+          kubectl rollout status deployment/patient-service --timeout=90s
           
           echo "Final Pod Check:"
           kubectl get pods -l "app in (order-service, application-service, patient-service)"
