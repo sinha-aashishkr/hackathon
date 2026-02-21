@@ -1,0 +1,146 @@
+name: CI - Infra and Microservices Pipeline
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'terraform/**'
+      - 'order-service/**'
+      - 'application-service/**'
+      - 'patient-service/**'
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCR_HOSTNAME: gcr.io
+
+jobs:
+  # --- STAGE 1: INFRASTRUCTURE ---
+  terraform-dev:
+    name: Terraform Dev (Plan & Apply)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform/dev
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: true
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -input=false
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -input=false
+
+  # --- STAGE 2: JAVA MICROSERVICE ---
+  build-order-service:
+    name: Order Service (Java)
+    needs: terraform-dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build Java Jar
+        run: mvn clean package -DskipTests
+        working-directory: ./order-service
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Docker Build and Push
+        run: |
+          gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
+          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ github.sha }} .
+          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ github.sha }}
+        working-directory: ./order-service
+
+  # --- STAGE 3: NODE MICROSERVICE (Application) ---
+  build-application-service:
+    name: Application Service (Node)
+    needs: terraform-dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './application-service/package-lock.json'
+
+      - name: Install & Build Node
+        run: |
+          npm ci
+          npm run build --if-present
+        working-directory: ./application-service
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Docker Build and Push
+        run: |
+          gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
+          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ github.sha }} .
+          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ github.sha }}
+        working-directory: ./application-service
+
+  # --- STAGE 4: NODE MICROSERVICE (Patient) ---
+  build-patient-service:
+    name: Patient Service (Node)
+    needs: terraform-dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './patient-service/package-lock.json'
+
+      - name: Install & Build Node
+        run: |
+          npm ci
+          npm run build --if-present
+        working-directory: ./patient-service
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Docker Build and Push
+        run: |
+          gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
+          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ github.sha }} .
+          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ github.sha }}
+        working-directory: ./patient-service
