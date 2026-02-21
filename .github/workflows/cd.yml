@@ -1,0 +1,50 @@
+name: CD - Deploy Pipeline
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  # --- CD STAGE: DEPLOY TO GKE ---
+  deploy-to-gke:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+          location: ${{ secrets.GKE_ZONE }}
+
+      - name: Update Image Tags and Deploy
+        run: |
+          # 1. Update Order Service (Java)
+          sed -i "s/{{IMAGE_VERSION}}/${{ github.sha }}/g" order-service/k8s/deployment.yaml
+          kubectl apply -f order-service/k8s/deployment.yaml
+
+          # 2. Update Application Service (Node)
+          sed -i "s/{{IMAGE_VERSION}}/${{ github.sha }}/g" application-service/k8s/deployment.yaml
+          kubectl apply -f application-service/k8s/deployment.yaml
+
+          # 3. Update Patient Service (Node)
+          sed -i "s/{{IMAGE_VERSION}}/${{ github.sha }}/g" patient-service/k8s/deployment.yaml
+          kubectl apply -f patient-service/k8s/deployment.yaml
+
+      - name: Validate Deployment Status
+        run: |
+          echo "Waiting for rollouts to finish..."
+          kubectl rollout status deployment/order-service-deploy --timeout=90s
+          kubectl rollout status deployment/application-service-deploy --timeout=90s
+          kubectl rollout status deployment/patient-service-deploy --timeout=90s
+          
+          echo "Final Pod Check:"
+          kubectl get pods -l "app in (order-service, application-service, patient-service)"
