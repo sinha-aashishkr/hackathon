@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: patient-service
-          image: {{ IMAGE_NAME }}
+          image: {{IMAGE_NAME}}
           resources:
             limits:
               cpu: 100m
