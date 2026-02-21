@@ -29,21 +29,21 @@ jobs:
         run: |
           # 1. Update Order Service (Java)
           sed -i "s/{{IMAGE_VERSION}}/${{ github.sha }}/g" order-service/k8s/deployment.yaml
-          kubectl apply -f order-service/k8s/service.yaml
-          kubectl apply -f order-service/k8s/ingress.yaml
-          kubectl apply -f order-service/k8s/deployment.yaml
+          kubectl apply -f order-service/k8s/service.yml
+          kubectl apply -f order-service/k8s/ingress.yml
+          kubectl apply -f order-service/k8s/deployment.yml
 
           # 2. Update Application Service (Node)
           sed -i "s/{{IMAGE_VERSION}}/${{ github.sha }}/g" application-service/k8s/deployment.yaml
-          kubectl apply -f application-service/k8s/service.yaml
-          kubectl apply -f application-service/k8s/ingress.yaml
-          kubectl apply -f application-service/k8s/deployment.yaml
+          kubectl apply -f application-service/k8s/service.yml
+          kubectl apply -f application-service/k8s/ingress.yml
+          kubectl apply -f application-service/k8s/deployment.yml
 
           # 3. Update Patient Service (Node)
           sed -i "s/{{IMAGE_VERSION}}/${{ github.sha }}/g" patient-service/k8s/deployment.yaml
-          kubectl apply -f patient-service/k8s/service.yaml
-          kubectl apply -f patient-service/k8s/ingress.yaml
-          kubectl apply -f patient-service/k8s/deployment.yaml
+          kubectl apply -f patient-service/k8s/service.yml
+          kubectl apply -f patient-service/k8s/ingress.yml
+          kubectl apply -f patient-service/k8s/deployment.yml
 
       - name: Validate Deployment Status
         run: |
