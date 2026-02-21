@@ -67,8 +67,8 @@ jobs:
       - name: Docker Build and Push
         run: |
           gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
-          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ github.sha }} .
-          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ github.sha }}
+          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ vars.version }} .
+          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ vars.version }}
         working-directory: order-service
 
   # --- STAGE 3: NODE MICROSERVICE (Application) ---
@@ -101,8 +101,8 @@ jobs:
       - name: Docker Build and Push
         run: |
           gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
-          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ github.sha }} .
-          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ github.sha }}
+          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ vars.version }} .
+          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ vars.version }}
         working-directory: application-service
 
   # --- STAGE 4: NODE MICROSERVICE (Patient) ---
@@ -135,6 +135,6 @@ jobs:
       - name: Docker Build and Push
         run: |
           gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
-          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ github.sha }} .
-          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ github.sha }}
+          docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ vars.version }} .
+          docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ vars.version }}
         working-directory: patient-service
