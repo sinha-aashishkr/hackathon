@@ -2,12 +2,6 @@ name: CI - Infra and Microservices Pipeline
 
 on:
   pull_request:
-    branches: [ "main" ]
-    paths:
-      - 'terraform/**'
-      - 'order-service/**'
-      - 'application-service/**'
-      - 'patient-service/**'
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
