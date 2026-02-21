@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./terraform/dev
+        working-directory: terraform/envs/dev
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
 
       - name: Build Java Jar
         run: mvn clean package -DskipTests
-        working-directory: ./order-service
+        working-directory: order-service
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -69,7 +69,7 @@ jobs:
           gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
           docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ github.sha }} .
           docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/order-service:${{ github.sha }}
-        working-directory: ./order-service
+        working-directory: order-service
 
   # --- STAGE 3: NODE MICROSERVICE (Application) ---
   build-application-service:
@@ -85,13 +85,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: './application-service/package-lock.json'
+          cache-dependency-path: 'application-service/package-lock.json'
 
       - name: Install & Build Node
         run: |
           npm ci
           npm run build --if-present
-        working-directory: ./application-service
+        working-directory: application-service
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -103,7 +103,7 @@ jobs:
           gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
           docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ github.sha }} .
           docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/application-service:${{ github.sha }}
-        working-directory: ./application-service
+        working-directory: application-service
 
   # --- STAGE 4: NODE MICROSERVICE (Patient) ---
   build-patient-service:
@@ -119,13 +119,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: './patient-service/package-lock.json'
+          cache-dependency-path: 'patient-service/package-lock.json'
 
       - name: Install & Build Node
         run: |
           npm ci
           npm run build --if-present
-        working-directory: ./patient-service
+        working-directory: patient-service
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -137,4 +137,4 @@ jobs:
           gcloud auth configure-docker ${{ env.GCR_HOSTNAME }} --quiet
           docker build -t ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ github.sha }} .
           docker push ${{ env.GCR_HOSTNAME }}/${{ env.GCP_PROJECT_ID }}/patient-service:${{ github.sha }}
-        working-directory: ./patient-service
+        working-directory: patient-service
